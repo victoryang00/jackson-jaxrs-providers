@@ -80,7 +80,7 @@ public abstract class SimpleEndpointTestBase extends ResourceTestBase
         }
     }
 
-    final static byte[] UNTOUCHABLE_RESPONSE = new byte[] { 1, 2, 3, 4 };
+    private final static byte[] UNTOUCHABLE_RESPONSE = new byte[] { 1, 2, 3, 4 };
 
     @Path("/raw")
     public static class RawResource

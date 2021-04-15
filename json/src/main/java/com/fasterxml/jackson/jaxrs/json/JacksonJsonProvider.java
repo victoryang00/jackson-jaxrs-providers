@@ -7,11 +7,10 @@ import javax.ws.rs.core.*;
 import javax.ws.rs.ext.*;
 
 import com.fasterxml.jackson.core.*;
-
 import com.fasterxml.jackson.databind.*;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-
 import com.fasterxml.jackson.jaxrs.base.ProviderBase;
+import com.fasterxml.jackson.jaxrs.cfg.Annotations;
+
 
 /**
  * Basic implementation of JAX-RS abstractions ({@link MessageBodyReader},
@@ -48,18 +47,26 @@ import com.fasterxml.jackson.jaxrs.base.ProviderBase;
 @Produces(MediaType.WILDCARD)
 public class JacksonJsonProvider
     extends ProviderBase<JacksonJsonProvider,
-        JsonMapper,
-        JsonEndpointConfig,
-        JsonMapperConfigurator>
+        ObjectMapper,
+        JsonEndpointConfig, JsonMapperConfigurator>
 {
     public final static String MIME_JAVASCRIPT = "application/javascript";
 
     public final static String MIME_JAVASCRIPT_MS = "application/x-javascript";
-
+    
+    /**
+     * Default annotation sets to use, if not explicitly defined during
+     * construction: only Jackson annotations are used for the base
+     * class. Sub-classes can use other settings.
+     */
+    public final static Annotations[] BASIC_ANNOTATIONS = {
+        Annotations.JACKSON
+    };
+    
     /*
-    /**********************************************************************
+    /**********************************************************
     /* General configuration
-    /**********************************************************************
+    /**********************************************************
      */
 
     /**
@@ -69,25 +76,25 @@ public class JacksonJsonProvider
      * per-endpoint basis.
      */
     protected String _jsonpFunctionName;
-
+    
     /*
-    /**********************************************************************
+    /**********************************************************
     /* Context configuration
-    /**********************************************************************
+    /**********************************************************
      */
 
     /**
      * Injectable context object used to locate configured
-     * instance of {@link JsonMapper} to use for actual
+     * instance of {@link ObjectMapper} to use for actual
      * serialization.
      */
     @Context
     protected Providers _providers;
 
     /*
-    /**********************************************************************
+    /**********************************************************
     /* Construction
-    /**********************************************************************
+    /**********************************************************
      */
 
     /**
@@ -95,23 +102,31 @@ public class JacksonJsonProvider
      * configured to be used with JAX-RS implementation.
      */
     public JacksonJsonProvider() {
-        this(null, null);
+        this(null, BASIC_ANNOTATIONS);
     }
 
-    public JacksonJsonProvider(JsonMapper mapper) {
-        this(mapper, null);
+    /**
+     * @param annotationsToUse Annotation set(s) to use for configuring
+     *    data binding
+     */
+    public JacksonJsonProvider(Annotations... annotationsToUse) {
+        this(null, annotationsToUse);
     }
 
+    public JacksonJsonProvider(ObjectMapper mapper) {
+        this(mapper, BASIC_ANNOTATIONS);
+    }
+    
     /**
      * Constructor to use when a custom mapper (usually components
      * like serializer/deserializer factories that have been configured)
      * is to be used.
-     *
-     * @param aiOverride AnnotationIntrospector to override default with, if any
+     * 
+     * @param annotationsToUse Sets of annotations (Jackson, JAXB) that provider should
+     *   support
      */
-    public JacksonJsonProvider(JsonMapper mapper,
-            AnnotationIntrospector aiOverride) {
-        super(new JsonMapperConfigurator(mapper, aiOverride));
+    public JacksonJsonProvider(ObjectMapper mapper, Annotations[] annotationsToUse) {
+        super(new JsonMapperConfigurator(mapper, annotationsToUse));
     }
 
     /**
@@ -122,11 +137,11 @@ public class JacksonJsonProvider
     public Version version() {
         return PackageVersion.VERSION;
     }
-
+    
     /*
-    /**********************************************************************
+    /**********************************************************
     /* JSON-specific configuration
-    /**********************************************************************
+    /**********************************************************
      */
 
     public void setJSONPFunctionName(String fname) {
@@ -134,9 +149,9 @@ public class JacksonJsonProvider
     }
 
     /*
-    /**********************************************************************
+    /**********************************************************
     /* Abstract method impls
-    /**********************************************************************
+    /**********************************************************
      */
 
     /**
@@ -146,6 +161,8 @@ public class JacksonJsonProvider
      * {@link MediaType#getSubtype} returns "json" or something
      * ending with "+json".
      * Or "text/x-json" (since 2.3)
+     * 
+     * @since 2.2
      */
     @Override
     protected boolean hasMatchingMediaType(MediaType mediaType)
@@ -168,36 +185,30 @@ public class JacksonJsonProvider
                    || "x-json".equals(subtype) // [Issue#40]
                    ;
         }
-        // Not sure if this can happen; but it seems reasonable
-        // that we can at least produce JSON without media type?
+        /* Not sure if this can happen; but it seems reasonable
+         * that we can at least produce JSON without media type?
+         */
         return true;
     }
 
     @Override
-    protected JsonMapper _locateMapperViaProvider(Class<?> type, MediaType mediaType)
+    protected ObjectMapper _locateMapperViaProvider(Class<?> type, MediaType mediaType)
     {
-        JsonMapper m = _mapperConfig.getConfiguredMapper();
-        if (m == null) {
-            if (_providers != null) {
-                ContextResolver<JsonMapper> resolver = _providers.getContextResolver(JsonMapper.class, mediaType);
-                /* Above should work as is, but due to this bug
-                 *   [https://jersey.dev.java.net/issues/show_bug.cgi?id=288]
-                 * in Jersey, it doesn't. But this works until resolution of
-                 * the issue:
-                 */
-                if (resolver == null) {
-                    resolver = _providers.getContextResolver(JsonMapper.class, null);
-                }
-                if (resolver != null) {
-                    return resolver.getContext(type);
-                }
+        if (_providers != null) {
+            ContextResolver<ObjectMapper> resolver = _providers.getContextResolver(ObjectMapper.class, mediaType);
+            /* Above should work as is, but due to this bug
+             *   [https://jersey.dev.java.net/issues/show_bug.cgi?id=288]
+             * in Jersey, it doesn't. But this works until resolution of
+             * the issue:
+             */
+            if (resolver == null) {
+                resolver = _providers.getContextResolver(ObjectMapper.class, null);
             }
-            if (m == null) {
-                // If not, let's get the fallback default instance
-                m = _mapperConfig.getDefaultMapper();
+            if (resolver != null) {
+                return resolver.getContext(type);
             }
         }
-        return m;
+        return null;
     }
 
     @Override

@@ -1,6 +1,9 @@
 package com.fasterxml.jackson.datatype.jaxrs;
 
-import com.fasterxml.jackson.core.JacksonException;
+import java.io.IOException;
+
+import javax.ws.rs.core.Link;
+
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
@@ -8,8 +11,9 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.deser.std.StdScalarDeserializer;
 
-import javax.ws.rs.core.Link;
-
+/**
+ * @since 2.8
+ */
 public class LinkDeserializer extends StdScalarDeserializer<Link>
 {
     public LinkDeserializer() {
@@ -18,7 +22,7 @@ public class LinkDeserializer extends StdScalarDeserializer<Link>
 
     @Override
     public Link deserialize(JsonParser p, DeserializationContext ctxt)
-        throws JacksonException
+            throws IOException
     {
         String text = p.getValueAsString();
         if (text != null) { // has String representation
@@ -45,4 +49,5 @@ public class LinkDeserializer extends StdScalarDeserializer<Link>
         }
         return (Link) ctxt.handleUnexpectedToken(getValueType(ctxt), p);
     }
+
 }

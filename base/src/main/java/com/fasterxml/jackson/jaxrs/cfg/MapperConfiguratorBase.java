@@ -1,10 +1,12 @@
 package com.fasterxml.jackson.jaxrs.cfg;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.cfg.MapperBuilder;
+import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 
 /**
  * Helper class used to encapsulate details of configuring an
@@ -43,13 +45,11 @@ public abstract class MapperConfiguratorBase<IMPL extends MapperConfiguratorBase
      */
     
     /**
-     * {@code AnnotationIntrospector} to use as an override over default
-     * {@code JacksonAnnotationIntrospector}, if any.
-     *
-     * @since 3.0
+     * Annotations set to use by default; overridden by explicit call
+     * to {@link #setAnnotationsToUse}
      */
-    protected AnnotationIntrospector _instropectorOverride;
-
+    protected Annotations[] _annotationsToUse;
+    
     /*
     /**********************************************************************
     /* Lazily constructed Mapper instance(s)
@@ -77,14 +77,14 @@ public abstract class MapperConfiguratorBase<IMPL extends MapperConfiguratorBase
     /* Life-cycle
     /**********************************************************************
      */
-
-    public MapperConfiguratorBase(MAPPER mapper,
-            AnnotationIntrospector instropectorOverride)
+    
+    public MapperConfiguratorBase(MAPPER mapper, Annotations[] defaultAnnotations)
     {
         _mapper = mapper;
-        _instropectorOverride = instropectorOverride;
+        _annotationsToUse = defaultAnnotations;
     }
 
+    @SuppressWarnings("unchecked")
     public synchronized MAPPER getDefaultMapper() {
         if (_defaultMapper == null) {
             _defaultMapper = _mapperWithConfiguration(mapperBuilder());
@@ -97,6 +97,7 @@ public abstract class MapperConfiguratorBase<IMPL extends MapperConfiguratorBase
      * mapper (constructing an instance if one didn't yet exit), and return
      * that mapper.
      */
+    @SuppressWarnings("unchecked")
     protected MAPPER mapper()
     {
         if (_mapper == null) {
@@ -135,8 +136,8 @@ public abstract class MapperConfiguratorBase<IMPL extends MapperConfiguratorBase
         _mapper = m;
     }
 
-    public synchronized final void setAnnotationIntrospector(AnnotationIntrospector aiOverride) {
-        _instropectorOverride = aiOverride;
+    public synchronized final void setAnnotationsToUse(Annotations[] annotationsToUse) {
+        _annotationsToUse = annotationsToUse;
     }
 
     public final void configure(DeserializationFeature f, boolean state) {
@@ -175,9 +176,13 @@ public abstract class MapperConfiguratorBase<IMPL extends MapperConfiguratorBase
     protected MapperBuilder<?,?> _builderWithConfiguration(MapperBuilder<?,?> mapperBuilder)
     {
         // First, AnnotationIntrospector settings
-        if (_instropectorOverride != null) {
-            mapperBuilder = mapperBuilder.annotationIntrospector(_instropectorOverride);
+        AnnotationIntrospector intr;
+        if ((_annotationsToUse == null) || (_annotationsToUse.length == 0)) {
+            intr = AnnotationIntrospector.nopInstance();
+        } else {
+            intr = _resolveIntrospectors(_annotationsToUse);
         }
+        mapperBuilder = mapperBuilder.annotationIntrospector(intr);
 
         // Features?
         if (_mapperFeatures != null) {
@@ -200,7 +205,6 @@ public abstract class MapperConfiguratorBase<IMPL extends MapperConfiguratorBase
         return mapperBuilder;
     }
 
-    /*
     protected AnnotationIntrospector _resolveIntrospectors(Annotations[] annotationsToUse)
     {
         // Let's ensure there are no dups there first, filter out nulls
@@ -220,5 +224,23 @@ public abstract class MapperConfiguratorBase<IMPL extends MapperConfiguratorBase
         }
         return curr;
     }
-    */
+
+    protected AnnotationIntrospector _resolveIntrospector(Annotations ann)
+    {
+        switch (ann) {
+        case JACKSON:
+            return _jacksonIntrospector();
+        case JAXB:
+            return _jaxbIntrospector();
+        default:
+            throw new IllegalStateException(); 
+        }
+    }
+
+    // Separate method to allow overriding
+    protected AnnotationIntrospector _jacksonIntrospector() {
+        return new JacksonAnnotationIntrospector();
+    }
+
+    protected abstract AnnotationIntrospector _jaxbIntrospector();
 }

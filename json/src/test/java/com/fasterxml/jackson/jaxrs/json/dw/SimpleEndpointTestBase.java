@@ -39,18 +39,18 @@ import org.junit.Assert;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.core.JacksonException;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ValueDeserializer;
-import com.fasterxml.jackson.databind.ValueSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
@@ -101,79 +101,79 @@ public abstract class SimpleEndpointTestBase extends ResourceTestBase
     @JsonPropertyOrder({ "entities", "links" })
     @JsonAutoDetect(fieldVisibility = Visibility.ANY, creatorVisibility = Visibility.ANY, getterVisibility = Visibility.NONE, isGetterVisibility = Visibility.NONE, setterVisibility = Visibility.NONE)
     protected static class PageImpl<E> extends Page<E> {
-        protected static class JsonLinkSerializer extends ValueSerializer<javax.ws.rs.core.Link> {
+        protected static class JsonLinkSerializer extends JsonSerializer<javax.ws.rs.core.Link> {
 
             static final String HREF_PROPERTY = "href";
 
             @Override
             public void serialize(Link link, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
-                    throws JacksonException
-            {
+                    throws IOException {
                 jsonGenerator.writeStartObject();
-                jsonGenerator.writeStringProperty(HREF_PROPERTY, link.getUri().toString());
+                jsonGenerator.writeStringField(HREF_PROPERTY, link.getUri().toString());
                 for (Entry<String, String> entry : link.getParams().entrySet()) {
-                    jsonGenerator.writeStringProperty(entry.getKey(), entry.getValue());
+                    jsonGenerator.writeStringField(entry.getKey(), entry.getValue());
                 }
                 jsonGenerator.writeEndObject();
             }
         }
 
-        protected static class JsonLinkDeserializer extends ValueDeserializer<javax.ws.rs.core.Link>
-        {
-	    @Override
-	    public Link deserialize(JsonParser p, DeserializationContext deserializationContext)
-		throws JacksonException
-	    {
-		Link link = null;
-		JsonNode jsonNode = deserializationContext.readTree(p);
-		JsonNode hrefJsonNode = jsonNode.get(JsonLinkSerializer.HREF_PROPERTY);
-		if (hrefJsonNode != null) {
-		    Link.Builder linkBuilder = Link.fromUri(hrefJsonNode.asText());
-		    Iterator<String> nameIt = jsonNode.propertyNames();
-		    while (nameIt.hasNext()) {
-			String propName = nameIt.next();
-			if (!JsonLinkSerializer.HREF_PROPERTY.equals(propName)) {
-			    linkBuilder.param(propName, jsonNode.get(propName).asText());
+        protected static class JsonLinkDeserializer extends JsonDeserializer<javax.ws.rs.core.Link> {
+
+			@Override
+			public Link deserialize(JsonParser p, DeserializationContext deserializationContext)
+					throws IOException
+			{
+				Link link = null;
+				JsonNode jsonNode = deserializationContext.readTree(p);
+				JsonNode hrefJsonNode = jsonNode.get(JsonLinkSerializer.HREF_PROPERTY);
+				if (hrefJsonNode != null) {
+					Link.Builder linkBuilder = Link.fromUri(hrefJsonNode.asText());
+					Iterator<String> fieldNamesIterator = jsonNode.fieldNames();
+					while (fieldNamesIterator.hasNext()) {
+						String fieldName = fieldNamesIterator.next();
+						if (!JsonLinkSerializer.HREF_PROPERTY.equals(fieldName)) {
+							linkBuilder.param(fieldName, jsonNode.get(fieldName).asText());
+						}
+					}
+					link = linkBuilder.build();
+				}
+				return link;
 			}
-		    }
-		    link = linkBuilder.build();
+
 		}
-		return link;
-	    }
-	}
 
-	private final List<E> entities;
+		private final List<E> entities;
 
-	@JsonSerialize(contentUsing = JsonLinkSerializer.class)
-	@JsonDeserialize(contentUsing = JsonLinkDeserializer.class)
-	private final List<Link> links;
+		@JsonSerialize(contentUsing = JsonLinkSerializer.class)
+		@JsonDeserialize(contentUsing = JsonLinkDeserializer.class)
+		private final List<Link> links;
 
-	protected PageImpl() {
-	    this.entities = new ArrayList<>();
-	    this.links = new ArrayList<>();
-	}
-
-	public void addEntities(E... e) {
-	    Collections.addAll(this.entities, e);
-	}
-
-	public void addLinks(Link... l) {
-	    Collections.addAll(this.links, l);
-	}
-
-	@Override
-	public List<E> getEntities() {
-	    return this.entities;
-	}
-
-	@Override
-	public Link getLink(String rel) {
-	    for (Link link : this.links) {
-		if (link.getRel().equals(rel)) {
-		    return link;
+		protected PageImpl() {
+			this.entities = new ArrayList<>();
+			this.links = new ArrayList<>();
 		}
-	    }
-	    return null;
+
+		public void addEntities(E... e) {
+			Collections.addAll(this.entities, e);
+		}
+
+		public void addLinks(Link... l) {
+			Collections.addAll(this.links, l);
+		}
+
+		@Override
+		public List<E> getEntities() {
+			return this.entities;
+		}
+
+		@Override
+		public Link getLink(String rel) {
+			for (Link link : this.links) {
+				if (link.getRel().equals(rel)) {
+					return link;
+				}
+			}
+			return null;
         }
     }
 
@@ -205,7 +205,7 @@ public abstract class SimpleEndpointTestBase extends ResourceTestBase
         @POST
         @Consumes(MediaType.APPLICATION_JSON)
         @Produces(MediaType.APPLICATION_JSON)
-        public Point maxPoint(MappingIterator<Point> points) throws JacksonException
+        public Point maxPoint(MappingIterator<Point> points) throws IOException
         {
             Point max = null;
             int maxDist = 0;
@@ -460,7 +460,7 @@ public abstract class SimpleEndpointTestBase extends ResourceTestBase
         @Path("/max")
         @POST
         @Produces(MediaType.APPLICATION_JSON)
-        public Point maxPoint(MappingIterator<Point> points) throws JacksonException
+        public Point maxPoint(MappingIterator<Point> points) throws IOException
         {
      */
     

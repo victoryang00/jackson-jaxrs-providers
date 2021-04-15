@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.*;
  * that JAX-RS Resource will use for reading input into Java Objects.
  * Usually this class is accessed from a Servlet or JAX-RS filter
  * before execution reaches resource.
+ * 
+ * @since 2.3
  */
 public class ObjectReaderInjector
 {

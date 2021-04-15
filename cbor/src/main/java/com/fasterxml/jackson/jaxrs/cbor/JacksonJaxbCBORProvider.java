@@ -5,11 +5,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.ext.Provider;
 
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
-
-import com.fasterxml.jackson.dataformat.cbor.databind.CBORMapper;
-
-import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.jaxrs.cfg.Annotations;
 
 /**
  * JSON content type provider automatically configured to use both Jackson
@@ -28,34 +25,41 @@ import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
 @Provider
 @Consumes(MediaType.WILDCARD) // NOTE: required to support "non-standard" JSON variants
 @Produces(MediaType.WILDCARD)
-public class JacksonJaxbCBORProvider extends JacksonCBORProvider
-{
+public class JacksonJaxbCBORProvider extends JacksonCBORProvider {
+    /**
+     * Default annotation sets to use, if not explicitly defined during
+     * construction: use Jackson annotations if found; if not, use
+     * JAXB annotations as fallback.
+     */
+    public final static Annotations[] DEFAULT_ANNOTATIONS = {
+        Annotations.JACKSON, Annotations.JAXB
+    };
+
     /**
      * Default constructor, usually used when provider is automatically
      * configured to be used with JAX-RS implementation.
      */
     public JacksonJaxbCBORProvider()
     {
-        this(null, JaxbHolder.get());
+        this(null, DEFAULT_ANNOTATIONS);
     }
 
+    /**
+     * @param annotationsToUse Annotation set(s) to use for configuring
+     * data binding
+     */
+    public JacksonJaxbCBORProvider(Annotations... annotationsToUse)
+    {
+        this(null, annotationsToUse);
+    }
+    
     /**
      * Constructor to use when a custom mapper (usually components
      * like serializer/deserializer factories that have been configured)
      * is to be used.
      */
-    public JacksonJaxbCBORProvider(CBORMapper mapper,
-            AnnotationIntrospector aiOverride)
+    public JacksonJaxbCBORProvider(ObjectMapper mapper, Annotations[] annotationsToUse)
     {
-        super(mapper, aiOverride);
+        super(mapper, annotationsToUse);
     }
-
-    // Silly class to encapsulate reference to JAXB introspector class so that
-    // loading of parent class does not require it; only happens if and when
-    // introspector needed
-    private static class JaxbHolder {
-        public static AnnotationIntrospector get() {
-            return new JaxbAnnotationIntrospector();
-        }
-    }   
 }

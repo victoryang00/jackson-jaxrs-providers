@@ -65,6 +65,7 @@ public abstract class JaxrsTestBase
      * returning them
      */
     protected String getAndVerifyText(JsonParser jp)
+        throws IOException, JsonParseException
     {
         // Ok, let's verify other accessors
         int actLen = jp.getTextLength();

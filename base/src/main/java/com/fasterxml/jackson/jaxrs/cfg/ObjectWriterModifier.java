@@ -1,8 +1,9 @@
 package com.fasterxml.jackson.jaxrs.cfg;
 
+import java.io.IOException;
+
 import javax.ws.rs.core.MultivaluedMap;
 
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.databind.*;
 
 /**
@@ -23,5 +24,5 @@ public abstract class ObjectWriterModifier
     public abstract ObjectWriter modify(EndpointConfigBase<?> endpoint,
             MultivaluedMap<String,Object> responseHeaders,
             Object valueToWrite, ObjectWriter w)
-        throws JacksonException;
+        throws IOException;
 }
