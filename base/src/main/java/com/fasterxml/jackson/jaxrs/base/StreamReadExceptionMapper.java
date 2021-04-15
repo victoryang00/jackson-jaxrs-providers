@@ -1,6 +1,7 @@
 package com.fasterxml.jackson.jaxrs.base;
 
-import com.fasterxml.jackson.core.exc.StreamReadException;
+import com.fasterxml.jackson.core.JacksonException;
+
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
@@ -14,9 +15,9 @@ import javax.ws.rs.ext.ExceptionMapper;
  *
  * @since 2.2
  */
-public class StreamReadExceptionMapper implements ExceptionMapper<StreamReadException> {
+public class JsonParseExceptionMapper implements ExceptionMapper<JacksonException> {
     @Override
-    public Response toResponse(StreamReadException exception) {
+    public Response toResponse(JacksonException exception) {
         return Response.status(Response.Status.BAD_REQUEST).entity(exception.getMessage()).type("text/plain").build();
     }
 }

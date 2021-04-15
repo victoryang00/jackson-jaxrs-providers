@@ -13,7 +13,7 @@ data formats. They also contain SPI settings for auto-registration.
 
 ## Status
 
-[![Build Status](https://travis-ci.org/FasterXML/jackson-jaxrs-providers.svg?branch=master)](https://travis-ci.org/FasterXML/jackson-jaxrs-providers)
+[![Build Status](https://travis-ci.org/FasterXML/jackson-jaxrs-providers.svg?branch=master)](https://travis-ci.org/FasterXML/jackson-jaxrs-providers) [![test](https://github.com/victoryang00/jackson-jaxrs-providers/actions/workflows/test.yml/badge.svg)](https://github.com/victoryang00/jackson-jaxrs-providers/actions/workflows/test.yml)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider/)
 [![Javadoc](https://javadoc.io/badge/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider.svg)](http://www.javadoc.io/doc/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider)
 [![Tidelift](https://tidelift.com/badges/package/maven/com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider)](https://tidelift.com/subscription/pkg/maven-com-fasterxml-jackson-jaxrs-jackson-jaxrs-json-provider?utm_source=maven-com-fasterxml-jackson-jaxrs-jackson-jaxrs-json-provider&utm_medium=referral&utm_campaign=readme)

@@ -763,9 +763,11 @@ public abstract class ProviderBase<
     protected JsonParser _createParser(ObjectReader reader, InputStream rawStream)
         throws JacksonException
     {
-        // Note: disabling of AUTO_CLOSE_SOURCE should have happened earlier
-        // so can just construct and return parser as-is
-        return reader.createParser(rawStream);
+        JsonParser p = reader.createParser(rawStream);
+        // Important: we are NOT to close the underlying stream after
+        // mapping, so we need to instruct parser:
+        p.isEnabled(StreamReadFeature.AUTO_CLOSE_SOURCE);
+        return p;
     }
 
     /**

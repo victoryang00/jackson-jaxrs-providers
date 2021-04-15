@@ -1,0 +1,30 @@
+name: test
+
+on: [push]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+          
+      - name: pre-build
+        run: mvn test-compile -pl base -am
+        
+      - name: pre-build1
+        run: mvn -pl base test -Dtest="com.fasterxml.jackson.jaxrs.base.cfg.AnnotationBundleKeyTest#testWithClassAnnotations"
+
+      - name: build
+        run: mvn -pl base edu.illinois:nondex-maven-plugin:1.1.2:nondex -Dtest="com.fasterxml.jackson.jaxrs.base.cfg.AnnotationBundleKeyTest#testWithClassAnnotations"
+
