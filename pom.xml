@@ -35,7 +35,8 @@
 
     <!--  Need Jersey+Jetty for testing; deps from DropWizard 1.2.9 -->
     <version.jersey>2.25.1</version.jersey>
-    <version.jetty>9.4.35.v20201120</version.jetty>
+    <!-- 10-Mar-2021, tatu: Further increase (latest at this point) -->
+    <version.jetty>9.4.38.v20210224</version.jetty>
     
     <!-- Needed to enable jax-rs 2.0 usage under OSGi -->
     <javax.ws.rs.version>[2.0,2.2)</javax.ws.rs.version>
@@ -46,7 +47,7 @@
       <dependency>
         <groupId>jakarta.xml.bind</groupId>
         <artifactId>jakarta.xml.bind-api</artifactId>
-        <version>2.3.2</version>
+        <version>2.3.3</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -130,6 +131,7 @@
             </instructions>
           </configuration>
         </plugin>
+
         <plugin>
           <!-- Inherited from oss-base. Generate PackageVersion.java.-->
           <groupId>com.google.code.maven-replacer-plugin</groupId>
@@ -140,6 +142,17 @@
               <phase>generate-sources</phase>
             </execution>
           </executions>
+        </plugin>
+
+        <plugin>
+          <groupId>org.moditect</groupId>
+          <artifactId>moditect-maven-plugin</artifactId>
+          <!-- 20-Feb-2021, tatu: For Jackson 2.x, put `module-info.class` under location
+              since otherwise it seems "module-info.class" will be missing from "-jakarta" variant?
+            -->
+          <configuration>
+            <jvmVersion>11</jvmVersion>
+          </configuration>
         </plugin>
 
       </plugins>

@@ -10,6 +10,28 @@ Sub-modules:
 === Releases ===
 ------------------------------------------------------------------------
 
+2.13.0 (not yet released)
+
+#134: Remove work-around for JAX-RS 1.x wrt JAX-RS 2 type `NoContentException`
+- Update `jakarta.xml.bind-api` dep (2.3.2 -> 2.3.3)
+
+2.12.3 (12-Apr-2021)
+
+No changes since 2.12.2
+
+2.12.2 (03-Mar-2021)
+
+#132: jaxrs jakarta versions have javax.ws references in OSGi manifest
+ (reported by Scott L)
+#136: Create manifest files separately and reference in bundle plugin, shade in
+  the new manifest for Jakarta separately before install
+ (contributed by Marc M)
+* Woodstox dependency to 6.2.4
+
+2.12.1 (08-Jan-2021)
+
+No changes since 2.12.0
+
 2.12.0 (29-Nov-2020)
 
 #127: Allow multiple implementations of JAX-RS for all providers
@@ -17,8 +39,12 @@ Sub-modules:
 #128: Module-Info Enhancements - JAX-RS updates for Jakarta Release version
  (contributed by Marc M)
 - Add Gradle Module Metadata (https://blog.gradle.org/alignment-with-gradle-module-metadata)
+
+2.11.4 (12-Dec-2020)
+
 - Upgrade Woodstox dependency to 6.2.3
 
+2.11.4 (12-Dec-2020)
 2.11.3 (02-Oct-2020)
 2.11.2 (02-Aug-2020)
 2.11.1 (25-Jun-2020)

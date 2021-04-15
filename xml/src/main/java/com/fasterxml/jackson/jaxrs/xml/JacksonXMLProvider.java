@@ -9,10 +9,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.ext.*;
 
 import com.fasterxml.jackson.core.*;
+import com.fasterxml.jackson.core.exc.WrappedIOException;
 import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.dataformat.xml.JacksonXmlAnnotationIntrospector;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.jaxrs.base.ProviderBase;
-import com.fasterxml.jackson.jaxrs.cfg.Annotations;
 
 /**
  * Basic implementation of JAX-RS abstractions ({@link MessageBodyReader},
@@ -54,19 +55,10 @@ public class JacksonXMLProvider
         XMLMapperConfigurator
 >
 {
-    /**
-     * Default annotation sets to use, if not explicitly defined during
-     * construction: only Jackson annotations are used for the base
-     * class. Sub-classes can use other settings.
-     */
-    public final static Annotations[] BASIC_ANNOTATIONS = {
-        Annotations.JACKSON
-    };
-    
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Context configuration
-    /**********************************************************
+    /**********************************************************************
      */
 
     /**
@@ -78,9 +70,9 @@ public class JacksonXMLProvider
     protected Providers _providers;
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Construction
-    /**********************************************************
+    /**********************************************************************
      */
 
     /**
@@ -88,32 +80,18 @@ public class JacksonXMLProvider
      * configured to be used with JAX-RS implementation.
      */
     public JacksonXMLProvider() {
-        this(null, BASIC_ANNOTATIONS);
+        this(null, new JacksonXmlAnnotationIntrospector());
     }
 
-    /**
-     * @param annotationsToUse Annotation set(s) to use for configuring
-     *    data binding
-     */
-    public JacksonXMLProvider(Annotations... annotationsToUse)
-    {
-        this(null, annotationsToUse);
-    }
-
-    public JacksonXMLProvider(XmlMapper mapper) {
-        this(mapper, BASIC_ANNOTATIONS);
-    }
-    
     /**
      * Constructor to use when a custom mapper (usually components
      * like serializer/deserializer factories that have been configured)
      * is to be used.
      * 
-     * @param annotationsToUse Sets of annotations (Jackson, JAXB) that provider should
-     *   support
+     * @param aiOverride AnnotationIntrospector to override default with, if any
      */
-    public JacksonXMLProvider(XmlMapper mapper, Annotations[] annotationsToUse) {
-        super(new XMLMapperConfigurator(mapper, annotationsToUse));
+    public JacksonXMLProvider(XmlMapper mapper, AnnotationIntrospector aiOverride) {
+        super(new XMLMapperConfigurator(mapper, aiOverride));
     }
 
     /**
@@ -126,9 +104,9 @@ public class JacksonXMLProvider
     }
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Abstract method impls
-    /**********************************************************
+    /**********************************************************************
      */
 
     @Override
@@ -218,22 +196,25 @@ public class JacksonXMLProvider
     }
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Overrides
-    /**********************************************************
+    /**********************************************************************
      */
 
     @Override
     protected JsonParser _createParser(ObjectReader reader, InputStream rawStream)
-        throws IOException
     {
         // Fix for [Issue#4]: note, can not try to advance parser, XML parser complains
-        PushbackInputStream wrappedStream = new PushbackInputStream(rawStream);
-        int firstByte = wrappedStream.read(); 
-        if (firstByte == -1) {
-            return null;
+        try {
+            PushbackInputStream wrappedStream = new PushbackInputStream(rawStream);
+            int firstByte = wrappedStream.read(); 
+            if (firstByte == -1) {
+                return null;
+            }
+            wrappedStream.unread(firstByte);
+            return reader.createParser(wrappedStream);
+        } catch (IOException e) {
+            throw WrappedIOException.construct(e);
         }
-        wrappedStream.unread(firstByte);
-        return reader.createParser(wrappedStream);
     }
 }

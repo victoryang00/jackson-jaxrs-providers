@@ -2,10 +2,7 @@ package com.fasterxml.jackson.jaxrs.base;
 
 import java.io.*;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -14,10 +11,10 @@ import javax.ws.rs.ext.MessageBodyReader;
 import javax.ws.rs.ext.MessageBodyWriter;
 
 import com.fasterxml.jackson.core.*;
+
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.fasterxml.jackson.jaxrs.base.nocontent.JaxRS1NoContentExceptionSupplier;
-import com.fasterxml.jackson.jaxrs.base.nocontent.JaxRS2NoContentExceptionSupplier;
+
 import com.fasterxml.jackson.jaxrs.cfg.*;
 import com.fasterxml.jackson.jaxrs.util.ClassKey;
 import com.fasterxml.jackson.jaxrs.util.LRUMap;
@@ -39,8 +36,6 @@ public abstract class ProviderBase<
     public final static String HEADER_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options";
 
     protected final static String CLASS_NAME_NO_CONTENT_EXCEPTION = "javax.ws.rs.core.NoContentException";
-
-    protected final NoContentExceptionSupplier noContentExceptionSupplier = _createNoContentExceptionSupplier();
 
     /**
      * Looks like we need to worry about accidental
@@ -90,9 +85,9 @@ public abstract class ProviderBase<
     protected final static int JAXRS_FEATURE_DEFAULTS = JaxRSFeature.collectDefaults();
     
     /*
-    /**********************************************************
+    /**********************************************************************
     /* General configuration
-    /**********************************************************
+    /**********************************************************************
      */
 
     /**
@@ -126,8 +121,6 @@ public abstract class ProviderBase<
 
     /**
      * Feature flags set.
-     * 
-     * @since 2.3
      */
     protected int _jaxRSFeatures;
 
@@ -142,9 +135,9 @@ public abstract class ProviderBase<
     protected Class<?> _defaultWriteView;
     
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Excluded types
-    /**********************************************************
+    /**********************************************************************
      */
 
     public final static HashSet<ClassKey> _untouchables = DEFAULT_UNTOUCHABLES;
@@ -154,9 +147,9 @@ public abstract class ProviderBase<
     public final static Class<?>[] _unwritableClasses = DEFAULT_UNWRITABLES;
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Bit of caching
-    /**********************************************************
+    /**********************************************************************
      */
 
     /**
@@ -175,9 +168,9 @@ public abstract class ProviderBase<
         = new AtomicReference<IOException>();
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Life-cycle
-    /**********************************************************
+    /**********************************************************************
      */
 
     protected ProviderBase(MAPPER_CONFIG mconfig) {
@@ -197,11 +190,11 @@ public abstract class ProviderBase<
         _mapperConfig = null;
         _jaxRSFeatures = JAXRS_FEATURE_DEFAULTS;
     }
-    
+
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Configuring
-    /**********************************************************
+    /**********************************************************************
      */
 
     /**
@@ -238,8 +231,6 @@ public abstract class ProviderBase<
     /**
      * Method for removing definition of specified type as untouchable:
      * usually only 
-     * 
-     * @since 2.2
      */
     public void removeUntouchable(Class<?> type)
     {
@@ -250,17 +241,17 @@ public abstract class ProviderBase<
     }
     
     /**
-     * Method for configuring which annotation sets to use (including none).
-     * Annotation sets are defined in order decreasing precedence; that is,
-     * first one has the priority over following ones.
+     * Method for overriding {@link AnnotationIntrospector} to use instead of
+     * default {@code JacksonAnnotationIntrospector}: often used to add
+     * JAXB-backed introspector.
      * 
-     * @param annotationsToUse Ordered list of annotation sets to use; if null,
-     *    default
+     * @param aiOverride AnnotationIntrospector to configure mapper to use
+     *    ({@code null} to leave it as default one)
      */
-    public void setAnnotationsToUse(Annotations[] annotationsToUse) {
-        _mapperConfig.setAnnotationsToUse(annotationsToUse);
+    public void setAnnotationsToUse(AnnotationIntrospector aiOverride) {
+        _mapperConfig.setAnnotationIntrospector(aiOverride);
     }
-    
+
     /**
      * Method that can be used to directly define {@link ObjectMapper} to use
      * for serialization and deserialization; if null, will use the standard
@@ -273,8 +264,6 @@ public abstract class ProviderBase<
     /**
      * Method for specifying JSON View to use for reading content
      * when end point does not have explicit View annotations.
-     * 
-     * @since 2.3
      */
     public THIS setDefaultReadView(Class<?> view) {
         _defaultReadView = view;
@@ -284,8 +273,6 @@ public abstract class ProviderBase<
     /**
      * Method for specifying JSON View to use for reading content
      * when end point does not have explicit View annotations.
-     * 
-     * @since 2.3
      */
     public THIS setDefaultWriteView(Class<?> view) {
         _defaultWriteView = view;
@@ -300,8 +287,6 @@ public abstract class ProviderBase<
      *  setDefaultReadView(view);
      *  setDefaultWriteView(view);
      *</code>
-     * 
-     * @since 2.3
      */
     public THIS setDefaultView(Class<?> view) {
         _defaultReadView = _defaultWriteView = view;
@@ -379,9 +364,9 @@ public abstract class ProviderBase<
     }
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Abstract methods sub-classes need to implement
-    /**********************************************************
+    /**********************************************************************
      */
 
     /**
@@ -390,8 +375,6 @@ public abstract class ProviderBase<
      * (when binding input data such as POST body).
      *<p>
      * Default implementation simply calls {@link #hasMatchingMediaType}.
-     * 
-     * @since 2.3
      */
     protected boolean hasMatchingMediaTypeForReading(MediaType mediaType) {
         return hasMatchingMediaType(mediaType);
@@ -430,6 +413,9 @@ public abstract class ProviderBase<
         } else {
             r = mapper.reader();
         }
+        // 25-Jan-2020, tatu: Important: JAX-RS expects that the InputStream
+        //   is NOT closed by parser so...
+        r = r.without(StreamReadFeature.AUTO_CLOSE_SOURCE);
         return _configForReading(r, annotations);
     }
 
@@ -443,6 +429,9 @@ public abstract class ProviderBase<
         } else {
             w = mapper.writer();
         }
+        // 25-Jan-2020, tatu: Important: JAX-RS expects that the OutputStream
+        //   is NOT closed by generator so...
+        w = w.without(StreamWriteFeature.AUTO_CLOSE_TARGET);
         return _configForWriting(w, annotations);
     }
 
@@ -453,9 +442,9 @@ public abstract class ProviderBase<
         Annotation[] annotations);
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Partial MessageBodyWriter impl
-    /**********************************************************
+    /**********************************************************************
      */
 
     /**
@@ -469,9 +458,8 @@ public abstract class ProviderBase<
     @Override
     public long getSize(Object value, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType)
     {
-        /* In general figuring output size requires actual writing; usually not
-         * worth it to write everything twice.
-         */
+        // In general figuring output size requires actual writing; usually not
+        // worth it to write everything twice.
         return -1;
     }
     
@@ -530,7 +518,7 @@ public abstract class ProviderBase<
     public void writeTo(Object value, Class<?> type, Type genericType, Annotation[] annotations,
             MediaType mediaType,
             MultivaluedMap<String,Object> httpHeaders, OutputStream entityStream) 
-        throws IOException
+        throws JacksonException
     {
         EP_CONFIG endpoint = _endpointForWriting(value, type, genericType, annotations,
                 mediaType, httpHeaders);
@@ -605,7 +593,7 @@ public abstract class ProviderBase<
     protected void _modifyHeaders(Object value, Class<?> type, Type genericType, Annotation[] annotations,
             MultivaluedMap<String,Object> httpHeaders,
             EP_CONFIG endpoint)
-        throws IOException
+        throws JacksonException
     {
         // Add "nosniff" header?
         if (isEnabled(JaxRSFeature.ADD_NO_SNIFF_HEADER)) {
@@ -618,12 +606,10 @@ public abstract class ProviderBase<
      * contents into given raw {@link OutputStream}.
      */
     protected JsonGenerator _createGenerator(ObjectWriter writer, OutputStream rawStream, JsonEncoding enc)
-        throws IOException
+        throws JacksonException
     {
-        // Important: we are NOT to close the underlying stream after
-        // mapping, so we need to instruct generator
-        return writer.without(StreamWriteFeature.AUTO_CLOSE_TARGET)
-                .createGenerator(rawStream, enc);
+        // Note: disabling of AUTO_CLOSE_TARGET should have happened earlier
+        return writer.createGenerator(rawStream, enc);
     }
 
     protected EP_CONFIG _endpointForWriting(Object value, Class<?> type, Type genericType,
@@ -652,9 +638,9 @@ public abstract class ProviderBase<
     }
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* MessageBodyReader impl
-    /**********************************************************
+    /**********************************************************************
      */
     
     /**
@@ -717,7 +703,8 @@ public abstract class ProviderBase<
     public Object readFrom(Class<Object> type, Type genericType, Annotation[] annotations,
             MediaType mediaType, MultivaluedMap<String,String> httpHeaders,
             InputStream entityStream) 
-        throws IOException
+        throws JacksonException,
+            NoContentException
     {
         EP_CONFIG endpoint = _endpointForReading(type, genericType, annotations,
                 mediaType, httpHeaders);
@@ -731,14 +718,10 @@ public abstract class ProviderBase<
             if (JaxRSFeature.ALLOW_EMPTY_INPUT.enabledIn(_jaxRSFeatures)) {
                 return null;
             }
-            /* 05-Apr-2014, tatu: Trick-ee. NoContentFoundException only available in JAX-RS 2.0...
-             *   so need bit of obfuscated code to reach it.
-             */
-            IOException fail = _noContentExceptionRef.get();
-            if (fail == null) {
-                fail = _createNoContentException();
-            }
-            throw fail;
+
+            // 20-Jan-2021, tatu: Used to require complicated shuffling since exception
+            //   only part of JAX-RS 2.0. But that's fine now...
+            throw _createNoContentException();
         }
         Class<?> rawType = type;
         if (rawType == JsonParser.class) {
@@ -776,11 +759,9 @@ public abstract class ProviderBase<
      * contents of given raw {@link InputStream}.
      * May return null to indicate that Stream is empty; that is, contains no
      * content.
-     * 
-     * @since 2.2
      */
     protected JsonParser _createParser(ObjectReader reader, InputStream rawStream)
-        throws IOException
+        throws JacksonException
     {
         JsonParser p = reader.createParser(rawStream);
         // Important: we are NOT to close the underlying stream after
@@ -792,9 +773,7 @@ public abstract class ProviderBase<
     /**
      * Overridable helper method that will basically fetch representation of the
      * endpoint that can be used to get {@link ObjectReader} to use for deserializing
-     * content
-     *
-     * @since 2.8
+     * content.
      */
     protected EP_CONFIG _endpointForReading(Class<Object> type, Type genericType, Annotation[] annotations,
             MediaType mediaType, MultivaluedMap<String,String> httpHeaders)
@@ -822,9 +801,9 @@ public abstract class ProviderBase<
     }
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Overridable helper methods
-    /**********************************************************
+    /**********************************************************************
      */
 
     /**
@@ -894,8 +873,6 @@ public abstract class ProviderBase<
     /**
      * Overridable helper method used to allow handling of somewhat special
      * types for reading
-     * 
-     * @since 2.2
      */
     protected boolean _isSpecialReadable(Class<?> type) {
         return JsonParser.class == type;
@@ -905,8 +882,6 @@ public abstract class ProviderBase<
      * Overridable helper method called to check whether given type is a known
      * "ignorable type" (in context of reading), values of which are not bound
      * from content.
-     *
-     * @since 2.6
      */
     protected boolean _isIgnorableForReading(ClassKey typeKey)
     {
@@ -917,26 +892,21 @@ public abstract class ProviderBase<
      * Overridable helper method called to check whether given type is a known
      * "ignorable type" (in context of reading), values of which
      * can not be written out.
-     *
-     * @since 2.6
      */
     protected boolean _isIgnorableForWriting(ClassKey typeKey)
     {
         return _untouchables.contains(typeKey);
     }
-    
-    /**
-     * @since 2.4
-     */
-    protected IOException _createNoContentException()
+
+    protected NoContentException _createNoContentException()
     {
-        return noContentExceptionSupplier.createNoContentException();
+        return new NoContentException("No content (empty input stream)");
     }
 
     /*
-    /**********************************************************
+    /**********************************************************************
     /* Private/sub-class helper methods
-    /**********************************************************
+    /**********************************************************************
      */
 
     protected static boolean _containedIn(Class<?> mainType, HashSet<ClassKey> set)
@@ -1006,46 +976,5 @@ public abstract class ProviderBase<
     @SuppressWarnings("unchecked")
     private final THIS _this() {
         return (THIS) this;
-    }
-
-    /**
-     * Since class <code>javax.ws.rs.core.NoContentException</code> only exists in
-     * JAX-RS 2.0, but we want to have 1.x compatibility, need to dynamically select exception supplier
-     */
-    private static NoContentExceptionSupplier _createNoContentExceptionSupplier() {
-        try {
-            final Class<?> cls = Class.forName(CLASS_NAME_NO_CONTENT_EXCEPTION, false, getClassLoader());
-            Constructor<?> ctor;
-            if (System.getSecurityManager() == null) {
-                ctor = cls.getDeclaredConstructor(String.class);
-            } else {
-                ctor = AccessController.doPrivileged(new PrivilegedAction<Constructor<?>>() {
-                    @Override
-                    public Constructor<?> run() {
-                        try {
-                            return cls.getDeclaredConstructor(String.class);
-                        } catch (NoSuchMethodException ignore) {
-                            return null;
-                        }
-                    }
-                });
-            }
-            if (ctor != null) {
-                return new JaxRS2NoContentExceptionSupplier();
-            }
-        } catch (ClassNotFoundException | NoSuchMethodException ex) { }
-        return new JaxRS1NoContentExceptionSupplier();
-    }
-
-    private static ClassLoader getClassLoader() {
-        if (System.getSecurityManager() == null) {
-            return ProviderBase.class.getClassLoader();
-        }
-        return AccessController.doPrivileged(new PrivilegedAction<ClassLoader>() {
-            @Override
-            public ClassLoader run() {
-                return ProviderBase.class.getClassLoader();
-            }
-        });
     }
 }

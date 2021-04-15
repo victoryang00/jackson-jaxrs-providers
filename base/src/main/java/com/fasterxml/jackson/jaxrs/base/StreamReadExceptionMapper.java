@@ -2,6 +2,7 @@ package com.fasterxml.jackson.jaxrs.base;
 
 import com.fasterxml.jackson.core.JacksonException;
 
+
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 
